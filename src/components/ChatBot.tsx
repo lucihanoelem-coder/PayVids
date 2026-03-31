@@ -3,7 +3,9 @@ import { GoogleGenAI } from "@google/genai";
 import { MessageSquare, Send, X, Bot, User, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY 
+});
 
 interface Message {
   role: 'user' | 'model';
