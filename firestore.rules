@@ -1,0 +1,112 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - coins: number (required, >= 0)
+    //   - history: list of maps (videoId, earned, timestamp)
+    //
+    // Collection: videos
+    // Document ID: videoId
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required)
+    //   - url: string (required)
+    //   - duration: number (required)
+    //
+    // Collection: withdrawals
+    // Document ID: withdrawalId
+    // Fields:
+    //   - uid: string (required)
+    //   - amount: number (required)
+    //   - coins: number (required)
+    //   - accountName: string (required)
+    //   - bankName: string (required)
+    //   - accountNumber: string (required)
+    //   - routingCode: string (optional)
+    //   - status: string (required, enum: pending, completed, rejected)
+    //   - timestamp: string (required, ISO 8601)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "lucihanoelem@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'coins']) &&
+             data.uid is string &&
+             data.coins is number && data.coins >= 0 &&
+             (!('dailyWatchCount' in data) || (data.dailyWatchCount is number && data.dailyWatchCount <= 10)) &&
+             (!('lastWatchedDate' in data) || data.lastWatchedDate is string) &&
+             (!('history' in data) || data.history is list);
+    }
+
+    function isValidVideo(data) {
+      return data.keys().hasAll(['id', 'title', 'url', 'duration']) &&
+             data.id is string &&
+             data.title is string && data.title.size() < 200 &&
+             data.url is string &&
+             data.duration is number;
+    }
+
+    function isValidWithdrawal(data) {
+      return data.keys().hasAll(['uid', 'amount', 'coins', 'accountName', 'bankName', 'accountNumber', 'status', 'timestamp']) &&
+             data.uid is string &&
+             data.amount is number && data.amount > 0 &&
+             data.coins is number && data.coins >= 5000 &&
+             data.accountName is string && data.accountName.size() > 0 && data.accountName.size() < 100 &&
+             data.bankName is string && data.bankName.size() > 0 && data.bankName.size() < 100 &&
+             data.accountNumber is string && data.accountNumber.size() > 0 && data.accountNumber.size() < 50 &&
+             (!('routingCode' in data) || (data.routingCode is string && data.routingCode.size() < 50)) &&
+             data.status in ['pending', 'completed', 'rejected'] &&
+             data.timestamp is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && 
+                       request.resource.data.uid == resource.data.uid) || isAdmin();
+    }
+
+    match /videos/{videoId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /withdrawals/{withdrawalId} {
+      allow read: if (isAuthenticated() && request.auth.uid == resource.data.uid) || isAdmin();
+      allow create: if isAuthenticated() && 
+                      request.resource.data.uid == request.auth.uid && 
+                      isValidWithdrawal(request.resource.data) &&
+                      request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+  }
+}

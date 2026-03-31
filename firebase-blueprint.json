@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with coin balance and history.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "coins": { "type": "number" },
+        "dailyWatchCount": { "type": "number", "description": "Number of videos watched today (max 4)." },
+        "lastWatchedDate": { "type": "string", "format": "date", "description": "The date of the last video watched (YYYY-MM-DD)." },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "videoId": { "type": "string" },
+              "earned": { "type": "number" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      },
+      "required": ["uid", "coins"]
+    },
+    "Video": {
+      "title": "Video",
+      "description": "Video metadata for users to watch.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "duration": { "type": "number" }
+      },
+      "required": ["id", "title", "url"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal",
+      "description": "Bank transfer withdrawal request.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "amount": { "type": "number" },
+        "coins": { "type": "number" },
+        "accountName": { "type": "string" },
+        "bankName": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "routingCode": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "rejected"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "amount", "coins", "accountName", "bankName", "accountNumber", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user wallet and history."
+    },
+    "/videos/{videoId}": {
+      "schema": "Video",
+      "description": "Stores available videos."
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "Withdrawal",
+      "description": "Stores withdrawal requests."
+    }
+  }
+}
